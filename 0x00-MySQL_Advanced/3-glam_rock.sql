@@ -1,6 +1,7 @@
--- enumera todas las bandas con Glam rock como su estilo principal, clasificadas por su longevidad
-SELECCIONA   nombre_banda,
-        IFNULL (dividido, 2020 ) - IFNULL (formado, 0 ) COMO vida útil
-DE bandas_de_metal
-DONDE estilo como  ' %Glam rock% '
-ORDEN POR  2  DESC ;
+-- SQL script that lists all bands with Glam rock as their main style,
+-- ranked by their longevity
+SELECT  band_name,
+        IFNULL(split,2020) - IFNULL(formed,0) AS lifespan
+FROM metal_bands
+WHERE style like '%Glam rock%'
+ORDER BY 2 DESC;
