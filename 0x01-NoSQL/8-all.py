@@ -12,11 +12,7 @@ def list_all(mongo_collection):
     doc = mongo_collection.find()
 
     """ If there are no documents, it returns an empty list"""
+    doc_list = list(doc)
     if doc == 0:
         return []
-
-    """Create a list of documents"""
-    doc_list = []
-    for doc in doc:
-        doc_list.append(doc)
-        return doc_list
+    return doc_list
