@@ -6,25 +6,28 @@ import pymongo
 
 
 if __name__ == "__main__":
+    client = MongoClient('mongodb://127.0.0.1:27017')
+    collection = client.logs.nginx
 
-client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["logs"]
-coll = db["nginx"]
+    number_logs = collection.count_documents({})
+    print("""{} logs
+Methods:""".format(number_logs))
 
-# Obtiene el número total de documentos en la colección
-total_count = coll.count_documents({})
-print(f"{total_count} logs")
+    methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
-# Imprime el número de documentos para cada método HTTP
-methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-print("\tMethods:")
-for method in methods:
-    count = coll.count_documents({"method": method})
-    print(f"\t\t{count}\t{method}")
+    for method in methods:
+        logs = collection.count_documents({"method": method})
+        print("\tmethod {}: {}".format(method, logs))
 
-# Imprime el número de documentos con método=GET y path=/status
-count = coll.count_documents({"method": "GET", "path": "/status"})
-print(f"\t\t{count}\tGET /status")
+    pathlogs = collection.count_documents({"method": "GET", "path": "/status"})
+    print("{} status check".format(pathlogs))
 
+    print("IPs:")
+    ips = collection.aggregate([
+        {"$group": {"_id": "$ip", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ])
 
-
+    for ip in ips:
+        print("\t{}: {}".format(ip["_id"], ip["count"]))
