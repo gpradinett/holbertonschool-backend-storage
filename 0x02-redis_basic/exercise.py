@@ -1,129 +1,129 @@
 #!/usr/bin/env python3
 """Writing strings to Redis
 """
-importar  redis
-importar  uuid
-desde  escribir  import  Union , Callable , TypeVar
- herramientas de importación
+import redis
+import uuid
+from typing import Union, Callable, TypeVar
+import functools
 
 
-T  =  TypeVar ( "T" , str , bytes , int , float )
+T = TypeVar("T", str, bytes, int, float)
 
 
-def  call_history ( método : Invocable ) ->  Invocable :
+def call_history(method: Callable) -> Callable:
     """
-    call_history tiene un solo parámetro llamado método
-    que es un Callable y devuelve un Callable
+    call_history has a single parameter named method
+    that is a Callable and returns a Callable
     """
-    @functools . _ envolturas ( método )
-     envoltura de definición ( self , * args , ** kwargs ):
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
         """
-        Ejecute la función envuelta para recuperar la salida.
-        Almacene la salida usando rpush en la lista "...:salidas",
-        luego devuelve la salida
+        Execute the wrapped function to retrieve the output.
+        Store the output using rpush in the "...:outputs" list,
+        then return the output
         """
-        key_input  =  método . __qualname__  +  ":entradas"
-        key_output  =  método . __qualname__  +  ":salidas"
-        uno mismo _redis . rpush ( entrada_clave , str ( argumentos ))
-        salida  =  método ( self , * argumentos , ** kwargs )
-        uno mismo _redis . rpush ( key_output , str ( salida ))
+        key_input = method.__qualname__ + ":inputs"
+        key_output = method.__qualname__ + ":outputs"
+        self._redis.rpush(key_input, str(args))
+        output = method(self, *args, **kwargs)
+        self._redis.rpush(key_output, str(output))
 
-         salida de retorno
+        return output
 
-     envoltorio de devolución
+    return wrapper
 
 
-def  count_calls ( método : Invocable ) ->  Invocable :
+def count_calls(method: Callable) -> Callable:
     """
-    Por encima de Caché, defina un decorador count_calls que tome
-    un único argumento de método Callable y devuelve un Callable
+    Above Cache define a count_calls decorator that takes
+    a single method Callable argument and returns a Callable
     """
-    @functools . _ envolturas ( método )
-     envoltura de definición ( self , * args , ** kwargs ):
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
         """
-        Recuerda que el primer argumento del envuelto
-        la función será self, que es la instancia misma,
-        que le permite acceder a la instancia de Redis
+        Remember that the first argument of the wrapped
+        function will be self which is the instance itself,
+        which lets you access the Redis instance
         """
-        clave  =  método . __qualname__
-        uno mismo _redis . incr ( clave )
+        key = method.__qualname__
+        self._redis.incr(key)
 
-         método de retorno ( self , * args , ** kwargs )
+        return method(self, *args, **kwargs)
 
-     envoltorio de devolución
+    return wrapper
 
 
- caché de clase :
+class Cache:
     """
-    caché de clase
+    class Cache
     """
-    def  __init__ ( auto ):
+    def __init__(self):
         """
-        En el método __init__, almacene una instancia de Redis
-        cliente como una variable privada llamada _redis
-        (usando redis.Redis()) y vaciar la instancia usando flushdb
+        In the __init__ method, store an instance of the Redis
+        client as a private variable named _redis
+        (using redis.Redis()) and flush the instance using flushdb
         """
-        uno mismo _redis  =  redis . rojo ()
-        uno mismo _redis . descarga de base de datos ()
+        self._redis = redis.Redis()
+        self._redis.flushdb()
 
-    @ historial_de_llamadas
-    @ contar_llamadas
-    def  store ( self , data : Union [ str , bytes , int , float ]) ->  str :
+    @call_history
+    @count_calls
+    def store(self, data: Union[str, bytes, int, float]) -> str:
         """
-        método que toma un argumento de datos y devuelve una cadena.
-        El método debe generar una clave aleatoria (por ejemplo, usando uuid),
-        almacenar los datos de entrada en Redis usando la clave aleatoria y
-        devolver la llave
+        method that takes a data argument and returns a string.
+        The method should generate a random key (e.g. using uuid),
+        store the input data in Redis using the random key and
+        return the key
         """
-        clave  =  cadena ( uuid . uuid4 ())
-        uno mismo _redis . establecer ( clave , datos )
-         tecla de retorno
+        key = str(uuid.uuid4())
+        self._redis.set(key, data)
+        return key
 
-    def  get ( self , clave : str , fn :
-            Llamable [[ bytes ], T ] =  Ninguno ) ->  Unión [ str , bytes , int , float ]:
+    def get(self, key: str, fn:
+            Callable[[bytes], T] = None) -> Union[str, bytes, int, float]:
         """
-        método que toma un argumento de cadena clave y un opcional
-        Argumento invocable llamado fn. Este invocable se utilizará
-        para volver a convertir los datos al formato deseado
+        method that take a key string argument and an optional
+        Callable argument named fn. This callable will be used
+        to convert the data back to the desired format
         """
-        datos  =  uno mismo . _redis . obtener ( clave )
+        data = self._redis.get(key)
 
-        si  los datos  son  Ninguno :
-            volver  Ninguno
+        if data is None:
+            return None
 
-        si  fn  no es  ninguno : 
-            devolver  fn ( datos )
+        if fn is not None:
+            return fn(data)
 
-        devolver  datos
+        return data
 
-    def  get_str ( self , clave : str ) ->  str :
+    def get_str(self, key: str) -> str:
         """
-         que automáticamente parametrizará Cache.get
-         con la función de conversión correcta (str)
+         that will automatically parametrize Cache.get
+         with the correct conversion function (str)
         """
-        devolverse  a uno mismo . obtenerconseguir ( clave , lambda  i : i . decodificar ( "utf-8" ))
+        return self.getget(key, lambda i: i.decode("utf-8"))
 
-    def  get_int ( self , clave : str ) ->  int :
+    def get_int(self, key: str) -> int:
         """
-         que automáticamente parametrizará Cache.get
-         con la función de conversión correcta (int)
+         that will automatically parametrize Cache.get
+         with the correct conversion function (int)
         """
-        devolverse  a uno mismo . obtener ( clave , int )
+        return self.get(key, int)
 
 
-def  reproducir ( método : invocable ):
+def replay(method: Callable):
     """
-    En estas tareas, implementaremos una función de reproducción para
-    mostrar el historial de llamadas de una función en particular
+    In this tasks, we will implement a replay function to
+    display the history of calls of a particular function
     """
-    key_input  =  método . __qualname__  +  ":entradas"
-    key_output  =  método . __qualname__  +  ":salidas"
+    key_input = method.__qualname__ + ":inputs"
+    key_output = method.__qualname__ + ":outputs"
 
-    entradas  =  método . __yo__ . _redis . lrange ( key_input , 0 , - 1 )
-    salidas  =  método . __yo__ . _redis . lrange ( key_output , 0 , - 1 )
+    inputs = method.__self__._redis.lrange(key_input, 0, -1)
+    outputs = method.__self__._redis.lrange(key_output, 0, -1)
 
-    print ( "{} fue llamado {} veces:" . format ( method . __qualname__ , len ( entradas )))
-    para  inp , out  en  zip ( entradas , salidas ):
-        yo  =  entrada _ decodificar ( "utf-8" )
-        o  =  fuera . decodificar ( "utf-8" )
-        imprimir ( "{}(*{}) -> {}" . formato ( método . __qualname__ , i , o ))
+    print("{} was called {} times:".format(method.__qualname__, len(inputs)))
+    for inp, out in zip(inputs, outputs):
+        i = inp.decode("utf-8")
+        o = out.decode("utf-8")
+        print("{}(*{}) -> {}".format(method.__qualname__, i, o))
