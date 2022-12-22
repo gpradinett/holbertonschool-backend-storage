@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import uuid
-from typing import Union
+"""Writing strings to Redis
+"""
 import redis
-"""
-Writing strings to Redis
-"""
+import uuid
+from typing import Union, Callable, Any, Optional
+from functools import wraps
 
 
 def call_history(method: Callable) -> Callable:
@@ -54,22 +54,22 @@ def replay(method: Callable):
               o.decode("utf-8")))
 
 
-
 class Cache:
-    """ Stores the history of inputs and outputs for a particular
-    function
+    """A redis cache class
+    Args:
+        _redis: private instance of the Redis client
     """
     def __init__(self):
-        """ Defining the constructor """
         self._redis = redis.Redis()
         self._redis.flushdb()
 
-	@call_history
+    @call_history
     @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
-        """ method take a data and returns a string """
-        key = str(uuid.uuid4())
-        self._redis.set(key, data)
+        """Stores input data in Redis using a random key
+        """
+        key = str(uuid.uuid1())
+        self._redis.mset({key: data})
         return key
 
     def get(self, key: str,
@@ -81,4 +81,3 @@ class Cache:
             return fn(self._redis.get(key))
         else:
             return self._redis.get(key)
-	
