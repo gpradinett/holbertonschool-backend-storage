@@ -1,83 +1,129 @@
 #!/usr/bin/env python3
 """Writing strings to Redis
 """
-import redis
-import uuid
-from typing import Union, Callable, Any, Optional
-from functools import wraps
+importar  redis
+importar  uuid
+desde  escribir  import  Union , Callable , TypeVar
+ herramientas de importación
 
 
-def call_history(method: Callable) -> Callable:
-    """Stores the history of inputs and outputs for a particular
-    function
+T  =  TypeVar ( "T" , str , bytes , int , float )
+
+
+def  call_history ( método : Invocable ) ->  Invocable :
     """
-    in_key = method.__qualname__ + ":inputs"
-    out_key = method.__qualname__ + ":outputs"
-
-    @wraps(method)
-    def wrapper(self, *args):
-        self._redis.rpush(in_key, str(args))
-        res = method(self, *args)
-        self._redis.rpush(out_key, str(res))
-        return res
-    return wrapper
-
-
-def count_calls(method: Callable) -> Callable:
-    """Counts how many times methods of the Cache class
-    have been called.
+    call_history tiene un solo parámetro llamado método
+    que es un Callable y devuelve un Callable
     """
-    key = method.__qualname__
-
-    @wraps(method)
-    def wrapper(self, args):
-        k = method(self, args)
-        self._redis.incr(key)
-        return k
-
-    return wrapper
-
-
-def replay(method: Callable):
-    """Displays the history of calls of a particular function
-    """
-    client = redis.Redis()
-    st_name = Cache.store.__qualname__
-
-    inputs = client.lrange("{}:inputs".format(st_name), 0, -1)
-    outputs = client.lrange("{}:outputs".format(st_name), 0, -1)
-
-    print("{} was called {} times:".format(st_name,
-          client.get(st_name).decode("utf-8")))
-    for i, o in tuple(zip(inputs, outputs)):
-        print("{}(*('{}',)) -> {}".format(st_name, i.decode("utf-8"),
-              o.decode("utf-8")))
-
-
-class Cache:
-    """A redis cache class
-    Args:
-        _redis: private instance of the Redis client
-    """
-    def __init__(self):
-        self._redis = redis.Redis()
-        self._redis.flushdb()
-
-    @call_history
-    @count_calls
-    def store(self, data: Union[str, bytes, int, float]) -> str:
-        """Stores input data in Redis using a random key
+    @functools . _ envolturas ( método )
+     envoltura de definición ( self , * args , ** kwargs ):
         """
-        key = str(uuid.uuid1())
-        self._redis.mset({key: data})
-        return key
-
-    def get(self, key: str,
-            fn: Optional[Callable] = None) -> Union[str, bytes, int, float]:
-        """Gets the value of a string and returns it converted to
-        the right type
+        Ejecute la función envuelta para recuperar la salida.
+        Almacene la salida usando rpush en la lista "...:salidas",
+        luego devuelve la salida
         """
-        if fn:
-            return fn(self._redis.get(key))
-        else:
-            return self._redis.get(key)
+        key_input  =  método . __qualname__  +  ":entradas"
+        key_output  =  método . __qualname__  +  ":salidas"
+        uno mismo _redis . rpush ( entrada_clave , str ( argumentos ))
+        salida  =  método ( self , * argumentos , ** kwargs )
+        uno mismo _redis . rpush ( key_output , str ( salida ))
+
+         salida de retorno
+
+     envoltorio de devolución
+
+
+def  count_calls ( método : Invocable ) ->  Invocable :
+    """
+    Por encima de Caché, defina un decorador count_calls que tome
+    un único argumento de método Callable y devuelve un Callable
+    """
+    @functools . _ envolturas ( método )
+     envoltura de definición ( self , * args , ** kwargs ):
+        """
+        Recuerda que el primer argumento del envuelto
+        la función será self, que es la instancia misma,
+        que le permite acceder a la instancia de Redis
+        """
+        clave  =  método . __qualname__
+        uno mismo _redis . incr ( clave )
+
+         método de retorno ( self , * args , ** kwargs )
+
+     envoltorio de devolución
+
+
+ caché de clase :
+    """
+    caché de clase
+    """
+    def  __init__ ( auto ):
+        """
+        En el método __init__, almacene una instancia de Redis
+        cliente como una variable privada llamada _redis
+        (usando redis.Redis()) y vaciar la instancia usando flushdb
+        """
+        uno mismo _redis  =  redis . rojo ()
+        uno mismo _redis . descarga de base de datos ()
+
+    @ historial_de_llamadas
+    @ contar_llamadas
+    def  store ( self , data : Union [ str , bytes , int , float ]) ->  str :
+        """
+        método que toma un argumento de datos y devuelve una cadena.
+        El método debe generar una clave aleatoria (por ejemplo, usando uuid),
+        almacenar los datos de entrada en Redis usando la clave aleatoria y
+        devolver la llave
+        """
+        clave  =  cadena ( uuid . uuid4 ())
+        uno mismo _redis . establecer ( clave , datos )
+         tecla de retorno
+
+    def  get ( self , clave : str , fn :
+            Llamable [[ bytes ], T ] =  Ninguno ) ->  Unión [ str , bytes , int , float ]:
+        """
+        método que toma un argumento de cadena clave y un opcional
+        Argumento invocable llamado fn. Este invocable se utilizará
+        para volver a convertir los datos al formato deseado
+        """
+        datos  =  uno mismo . _redis . obtener ( clave )
+
+        si  los datos  son  Ninguno :
+            volver  Ninguno
+
+        si  fn  no es  ninguno : 
+            devolver  fn ( datos )
+
+        devolver  datos
+
+    def  get_str ( self , clave : str ) ->  str :
+        """
+         que automáticamente parametrizará Cache.get
+         con la función de conversión correcta (str)
+        """
+        devolverse  a uno mismo . obtenerconseguir ( clave , lambda  i : i . decodificar ( "utf-8" ))
+
+    def  get_int ( self , clave : str ) ->  int :
+        """
+         que automáticamente parametrizará Cache.get
+         con la función de conversión correcta (int)
+        """
+        devolverse  a uno mismo . obtener ( clave , int )
+
+
+def  reproducir ( método : invocable ):
+    """
+    En estas tareas, implementaremos una función de reproducción para
+    mostrar el historial de llamadas de una función en particular
+    """
+    key_input  =  método . __qualname__  +  ":entradas"
+    key_output  =  método . __qualname__  +  ":salidas"
+
+    entradas  =  método . __yo__ . _redis . lrange ( key_input , 0 , - 1 )
+    salidas  =  método . __yo__ . _redis . lrange ( key_output , 0 , - 1 )
+
+    print ( "{} fue llamado {} veces:" . format ( method . __qualname__ , len ( entradas )))
+    para  inp , out  en  zip ( entradas , salidas ):
+        yo  =  entrada _ decodificar ( "utf-8" )
+        o  =  fuera . decodificar ( "utf-8" )
+        imprimir ( "{}(*{}) -> {}" . formato ( método . __qualname__ , i , o ))
